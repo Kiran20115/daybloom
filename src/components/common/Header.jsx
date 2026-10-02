@@ -1,11 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { getTimeGreeting, formatFullDate } from '../../utils/dateUtils';
-import { Sun, Moon, Plus, Sparkles, Flame, Menu, Search, CalendarClock } from 'lucide-react';
+import {
+  Sun,
+  Moon,
+  Plus,
+  Sparkles,
+  Flame,
+  Menu,
+  Search,
+  CalendarClock,
+  LogOut,
+  User,
+  Settings,
+} from 'lucide-react';
 
 export const Header = () => {
   const {
     user,
+    currentUser,
+    logout,
     updateUser,
     setIsMobileNavOpen,
     setIsTaskModalOpen,
@@ -13,8 +27,10 @@ export const Header = () => {
     setIsPlanDayModalOpen,
     searchQuery,
     setSearchQuery,
-    tasks,
+    setActiveTab,
   } = useApp();
+
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   const greetingInfo = getTimeGreeting(user.name);
   const fullDateStr = formatFullDate();
@@ -76,12 +92,12 @@ export const Header = () => {
           </div>
         </div>
 
-        {/* Right Actions: Streak, Plan My Day, Add Task, Theme */}
+        {/* Right Actions: Streak, Plan My Day, Add Task, Theme & Profile Dropdown */}
         <div className="flex items-center gap-2 sm:gap-3">
           {/* Consistency Streak Pill */}
           <div
             title={`${user.streak} day consistency streak!`}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 text-xs font-semibold shadow-soft-sm cursor-default"
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/40 border border-amber-200/60 dark:border-amber-800/40 text-amber-700 dark:text-amber-300 text-xs font-semibold shadow-soft-sm cursor-default"
           >
             <Flame className="w-4 h-4 text-orange-500 animate-pulse" />
             <span>{user.streak} {user.streak === 1 ? 'day' : 'days'} streak</span>
@@ -117,6 +133,58 @@ export const Header = () => {
               <Moon className="w-4 h-4 text-purple-500" />
             )}
           </button>
+
+          {/* User Profile Avatar with dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setShowProfileMenu(!showProfileMenu)}
+              className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-200 to-pink-200 dark:from-purple-900 dark:to-pink-900 flex items-center justify-center text-lg border border-purple-200/60 dark:border-purple-800/40 shadow-soft-sm hover:scale-105 transition-all"
+              title="Account Menu"
+            >
+              {user.avatar || '🌷'}
+            </button>
+
+            {showProfileMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-20"
+                  onClick={() => setShowProfileMenu(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 w-52 bg-white dark:bg-[#1C182B] rounded-2xl shadow-soft-xl border border-purple-100 dark:border-purple-900/40 p-2 z-30 animate-bloom text-xs">
+                  <div className="px-3 py-2 border-b border-purple-50 dark:border-purple-900/20 mb-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-100 truncate">
+                      {user.name}
+                    </p>
+                    <p className="text-[11px] text-slate-400 truncate">
+                      {currentUser?.email || 'kiran@daybloom.app'}
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      setActiveTab('settings');
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40 transition-colors text-left"
+                  >
+                    <Settings className="w-4 h-4 text-purple-500" />
+                    <span>Profile & Settings</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setShowProfileMenu(false);
+                      logout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors text-left font-medium"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Sign Out</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </header>

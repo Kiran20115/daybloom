@@ -11,28 +11,85 @@ import {
   MOTIVATIONAL_QUOTES,
 } from './defaultData';
 import { loadFromStorage, saveToStorage, exportAllData, importAllData, clearAllDayBloomData } from '../utils/storage';
+import {
+  getAllUsers,
+  saveUser,
+  getCurrentUser,
+  setCurrentUser,
+  hashPassword,
+  loadUserScopedData,
+  saveUserScopedData,
+} from '../utils/authStorage';
 import { formatDate } from '../utils/dateUtils';
 import { triggerBloomConfetti, triggerCelebrationConfetti } from '../components/common/FlowerConfetti';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  // Theme and User state
-  const [user, setUser] = useState(() => loadFromStorage('user', INITIAL_USER));
+  // Auth state
+  const [currentUser, setCurrentUserState] = useState(() => getCurrentUser());
+
+  // User Profile state
+  const [user, setUser] = useState(() => {
+    const saved = loadFromStorage('user', INITIAL_USER);
+    const active = getCurrentUser();
+    if (active) {
+      return { ...saved, name: active.name, avatar: active.avatar || '🌷', email: active.email };
+    }
+    return saved;
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Productivity Entities
-  const [tasks, setTasks] = useState(() => loadFromStorage('tasks', INITIAL_TASKS));
-  const [subjects, setSubjects] = useState(() => loadFromStorage('subjects', INITIAL_SUBJECTS));
-  const [studySessions, setStudySessions] = useState(() => loadFromStorage('studySessions', INITIAL_STUDY_SESSIONS));
-  const [habits, setHabits] = useState(() => loadFromStorage('habits', INITIAL_HABITS));
-  const [goals, setGoals] = useState(() => loadFromStorage('goals', INITIAL_GOALS));
-  const [notes, setNotes] = useState(() => loadFromStorage('notes', INITIAL_NOTES));
-  const [badges, setBadges] = useState(() => loadFromStorage('badges', BADGES_LIST));
+  // Active user's ID for data scoping
+  const activeUserId = currentUser?.id || 'demo_kiran';
 
-  // Quick Action Modal states
+  // Productivity Entities scoped to current user
+  const [tasks, setTasks] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'tasks', null);
+    if (userStored) return userStored;
+    return loadFromStorage('tasks', INITIAL_TASKS);
+  });
+
+  const [subjects, setSubjects] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'subjects', null);
+    if (userStored) return userStored;
+    return loadFromStorage('subjects', INITIAL_SUBJECTS);
+  });
+
+  const [studySessions, setStudySessions] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'studySessions', null);
+    if (userStored) return userStored;
+    return loadFromStorage('studySessions', INITIAL_STUDY_SESSIONS);
+  });
+
+  const [habits, setHabits] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'habits', null);
+    if (userStored) return userStored;
+    return loadFromStorage('habits', INITIAL_HABITS);
+  });
+
+  const [goals, setGoals] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'goals', null);
+    if (userStored) return userStored;
+    return loadFromStorage('goals', INITIAL_GOALS);
+  });
+
+  const [notes, setNotes] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'notes', null);
+    if (userStored) return userStored;
+    return loadFromStorage('notes', INITIAL_NOTES);
+  });
+
+  const [badges, setBadges] = useState(() => {
+    const userStored = loadUserScopedData(activeUserId, 'badges', null);
+    if (userStored) return userStored;
+    return loadFromStorage('badges', BADGES_LIST);
+  });
+
+  // Modal states
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
   const [isPlanDayModalOpen, setIsPlanDayModalOpen] = useState(false);
@@ -52,17 +109,65 @@ export const AppProvider = ({ children }) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Sync to Storage
-  useEffect(() => saveToStorage('user', user), [user]);
-  useEffect(() => saveToStorage('tasks', tasks), [tasks]);
-  useEffect(() => saveToStorage('subjects', subjects), [subjects]);
-  useEffect(() => saveToStorage('studySessions', studySessions), [studySessions]);
-  useEffect(() => saveToStorage('habits', habits), [habits]);
-  useEffect(() => saveToStorage('goals', goals), [goals]);
-  useEffect(() => saveToStorage('notes', notes), [notes]);
-  useEffect(() => saveToStorage('badges', badges), [badges]);
+  // Switch workspace data when currentUser changes
+  const switchUserData = (uId, uProfile) => {
+    setUser((prev) => ({
+      ...prev,
+      name: uProfile.name,
+      avatar: uProfile.avatar || '🌷',
+      email: uProfile.email,
+    }));
 
-  // Sync Dark/Light theme class on <html>
+    setTasks(loadUserScopedData(uId, 'tasks', INITIAL_TASKS));
+    setSubjects(loadUserScopedData(uId, 'subjects', INITIAL_SUBJECTS));
+    setStudySessions(loadUserScopedData(uId, 'studySessions', INITIAL_STUDY_SESSIONS));
+    setHabits(loadUserScopedData(uId, 'habits', INITIAL_HABITS));
+    setGoals(loadUserScopedData(uId, 'goals', INITIAL_GOALS));
+    setNotes(loadUserScopedData(uId, 'notes', INITIAL_NOTES));
+    setBadges(loadUserScopedData(uId, 'badges', BADGES_LIST));
+  };
+
+  // Sync to User Scoped Storage
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'tasks', tasks);
+    saveToStorage('tasks', tasks);
+  }, [tasks, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'subjects', subjects);
+    saveToStorage('subjects', subjects);
+  }, [subjects, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'studySessions', studySessions);
+    saveToStorage('studySessions', studySessions);
+  }, [studySessions, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'habits', habits);
+    saveToStorage('habits', habits);
+  }, [habits, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'goals', goals);
+    saveToStorage('goals', goals);
+  }, [goals, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'notes', notes);
+    saveToStorage('notes', notes);
+  }, [notes, activeUserId]);
+
+  useEffect(() => {
+    saveUserScopedData(activeUserId, 'badges', badges);
+    saveToStorage('badges', badges);
+  }, [badges, activeUserId]);
+
+  useEffect(() => {
+    saveToStorage('user', user);
+  }, [user]);
+
+  // Sync Theme
   useEffect(() => {
     const root = document.documentElement;
     if (user.theme === 'dark') {
@@ -72,31 +177,109 @@ export const AppProvider = ({ children }) => {
     }
   }, [user.theme]);
 
-  // Streak verification on mount
-  useEffect(() => {
-    const today = formatDate();
-    if (user.lastActiveDate !== today) {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      const yesterdayStr = formatDate(yesterday);
+  // Authentication Methods
+  const login = (email, password) => {
+    const users = getAllUsers();
+    // Preload demo Kiran user if not present
+    let targetUser = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
 
-      if (user.lastActiveDate === yesterdayStr) {
-        // Consecutive active day!
-        setUser((prev) => ({
-          ...prev,
-          lastActiveDate: today,
-          streak: prev.streak + 1,
-        }));
-      } else if (user.lastActiveDate < yesterdayStr) {
-        // Soft reset streak without guilt
-        setUser((prev) => ({
-          ...prev,
-          lastActiveDate: today,
-          streak: 1,
-        }));
-      }
+    if (!targetUser && email.toLowerCase() === 'kiran@daybloom.app') {
+      targetUser = {
+        id: 'usr_kiran',
+        name: 'Kiran',
+        email: 'kiran@daybloom.app',
+        passwordHash: hashPassword(password),
+        avatar: '🌷',
+        createdAt: new Date().toISOString(),
+      };
+      saveUser(targetUser);
     }
-  }, []);
+
+    if (!targetUser) {
+      return { success: false, message: 'No account found with this email. Please create one.' };
+    }
+
+    if (targetUser.passwordHash !== hashPassword(password)) {
+      return { success: false, message: 'Incorrect password. Please try again.' };
+    }
+
+    setCurrentUser(targetUser);
+    setCurrentUserState(targetUser);
+    switchUserData(targetUser.id, targetUser);
+    notify(`Welcome back, ${targetUser.name}! 🌸`, 'flower');
+    return { success: true };
+  };
+
+  const signup = ({ name, email, password, avatar }) => {
+    const users = getAllUsers();
+    const existing = users.find((u) => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      return { success: false, message: 'An account with this email already exists.' };
+    }
+
+    const newUser = {
+      id: 'usr_' + Date.now(),
+      name,
+      email,
+      passwordHash: hashPassword(password),
+      avatar: avatar || '🌷',
+      createdAt: new Date().toISOString(),
+    };
+
+    saveUser(newUser);
+
+    // Initialize fresh starter tasks for this new user
+    saveUserScopedData(newUser.id, 'tasks', INITIAL_TASKS);
+    saveUserScopedData(newUser.id, 'subjects', INITIAL_SUBJECTS);
+    saveUserScopedData(newUser.id, 'habits', INITIAL_HABITS);
+    saveUserScopedData(newUser.id, 'goals', INITIAL_GOALS);
+    saveUserScopedData(newUser.id, 'notes', INITIAL_NOTES);
+    saveUserScopedData(newUser.id, 'badges', BADGES_LIST);
+
+    setCurrentUser(newUser);
+    setCurrentUserState(newUser);
+    switchUserData(newUser.id, newUser);
+    notify(`Account created! Welcome to DayBloom, ${name} 🌷`, 'flower');
+    return { success: true };
+  };
+
+  const loginAsGuest = () => {
+    const guestUser = {
+      id: 'usr_guest',
+      name: 'Mindful Guest',
+      email: 'guest@daybloom.app',
+      avatar: '🌿',
+      isGuest: true,
+    };
+    setCurrentUser(guestUser);
+    setCurrentUserState(guestUser);
+    switchUserData(guestUser.id, guestUser);
+    notify('Entered as Mindful Guest 🌿 Enjoy your study space!', 'flower');
+  };
+
+  const loginAsDemoKiran = () => {
+    const kiranUser = {
+      id: 'usr_kiran',
+      name: 'Kiran',
+      email: 'kiran@daybloom.app',
+      avatar: '🌷',
+    };
+    saveUser({
+      ...kiranUser,
+      passwordHash: hashPassword('password123'),
+      createdAt: new Date().toISOString(),
+    });
+    setCurrentUser(kiranUser);
+    setCurrentUserState(kiranUser);
+    switchUserData(kiranUser.id, kiranUser);
+    notify('Logged in as Kiran with full demo garden 🌸', 'flower');
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setCurrentUserState(null);
+    notify('You have been signed out gently. Rest well 🌙', 'info');
+  };
 
   // Task Actions
   const addTask = (taskData) => {
@@ -239,7 +422,6 @@ export const AppProvider = ({ children }) => {
 
     setStudySessions((prev) => [newSession, ...prev]);
 
-    // Update subject aggregates
     setSubjects((prev) =>
       prev.map((s) => {
         if (s.id === session.subjectId) {
@@ -299,10 +481,8 @@ export const AppProvider = ({ children }) => {
             notify(`Habit bloomed: ${h.name} 🌿`, 'flower');
           }
 
-          // Recalculate streak
           let streak = 0;
           const checkDate = new Date();
-          // Check up to 365 days
           for (let i = 0; i < 365; i++) {
             const d = new Date(checkDate);
             d.setDate(checkDate.getDate() - i);
@@ -310,7 +490,6 @@ export const AppProvider = ({ children }) => {
             if (newDates[ds]) {
               streak++;
             } else if (i === 0) {
-              // today not checked yet, look back from yesterday
               continue;
             } else {
               break;
@@ -435,6 +614,12 @@ export const AppProvider = ({ children }) => {
   // User Actions
   const updateUser = (updates) => {
     setUser((prev) => ({ ...prev, ...updates }));
+    if (currentUser) {
+      const updatedAuthUser = { ...currentUser, ...updates };
+      saveUser(updatedAuthUser);
+      setCurrentUser(updatedAuthUser);
+      setCurrentUserState(updatedAuthUser);
+    }
     notify('Preferences updated 🌷', 'flower');
   };
 
@@ -471,6 +656,14 @@ export const AppProvider = ({ children }) => {
   return (
     <AppContext.Provider
       value={{
+        // Auth
+        currentUser,
+        login,
+        signup,
+        loginAsGuest,
+        loginAsDemoKiran,
+        logout,
+        // User & Nav
         user,
         updateUser,
         activeTab,

@@ -6,6 +6,7 @@ import { MobileNav } from './components/common/MobileNav';
 import { ToastContainer } from './components/common/ToastContainer';
 import { TaskModal } from './components/tasks/TaskModal';
 import { PlanMyDayModal } from './components/planner/PlanMyDayModal';
+import { AuthScreen } from './components/auth/AuthScreen';
 
 // Views
 import { DashboardView } from './components/dashboard/DashboardView';
@@ -22,6 +23,7 @@ import { SettingsView } from './components/settings/SettingsView';
 
 const MainContent = () => {
   const {
+    currentUser,
     activeTab,
     isTaskModalOpen,
     setIsTaskModalOpen,
@@ -29,6 +31,16 @@ const MainContent = () => {
     isPlanDayModalOpen,
     setIsPlanDayModalOpen,
   } = useApp();
+
+  // If not authenticated, display the aesthetic Login / Sign Up portal
+  if (!currentUser) {
+    return (
+      <>
+        <AuthScreen />
+        <ToastContainer />
+      </>
+    );
+  }
 
   const renderActiveView = () => {
     switch (activeTab) {

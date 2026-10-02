@@ -13,11 +13,12 @@ import {
   Award,
   Settings,
   Sparkles,
+  LogOut,
 } from 'lucide-react';
 import { formatDate } from '../../utils/dateUtils';
 
 export const Sidebar = () => {
-  const { activeTab, setActiveTab, tasks, habits, user } = useApp();
+  const { activeTab, setActiveTab, tasks, habits, user, currentUser, logout } = useApp();
 
   const todayStr = formatDate();
 
@@ -102,22 +103,30 @@ export const Sidebar = () => {
         })}
       </nav>
 
-      {/* Bottom Profile & Mini Encouragement Card */}
+      {/* Bottom Profile & Sign Out */}
       <div className="pt-4 border-t border-purple-100/60 dark:border-purple-900/30">
-        <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-slate-900/40 border border-purple-50 dark:border-purple-900/20 shadow-soft-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-purple-200 to-pink-200 dark:from-purple-800 dark:to-pink-800 flex items-center justify-center text-lg">
+        <div className="p-3.5 rounded-2xl bg-white/70 dark:bg-slate-900/40 border border-purple-50 dark:border-purple-900/20 shadow-soft-sm flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-200 to-pink-200 dark:from-purple-800 dark:to-pink-800 flex items-center justify-center text-base shrink-0">
               {user.avatar || '🌷'}
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                 {user.name}
               </p>
-              <p className="text-[11px] text-purple-600 dark:text-purple-400 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 inline" /> Blooming Daily
+              <p className="text-[10px] text-purple-600 dark:text-purple-400 truncate">
+                {currentUser?.email || 'kiran@daybloom.app'}
               </p>
             </div>
           </div>
+
+          <button
+            onClick={logout}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0"
+            title="Sign Out"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>
